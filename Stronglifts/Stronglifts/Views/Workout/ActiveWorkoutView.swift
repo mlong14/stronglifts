@@ -1,0 +1,250 @@
+import SwiftUI
+import SwiftData
+import Combine
+import AudioToolbox
+
+struct PlateCalcRequest: Identifiable {
+    let id = UUID()
+    let weight: Double
+}
+
+struct ActiveWorkoutView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Bindable var session: WorkoutSession
+    let template: WorkoutTemplate?
+    let onFinish: () -> Void
+
+    // Rest timer state
+    @State private var restSecondsRemaining: Int = 0
+    @State private var isResting = false
+    @State private var nextSetAfterRest: SetLog?
+    @State private var timerCancellable: AnyCancellable?
+
+    // Sheets
+    @State private var plateCalcRequest: PlateCalcRequest? = nil
+    @State private var showAddExercise = false
+    @State private var showFinishConfirm = false
+
+    // Warmup navigation
+    @State private var warmupTarget: WarmupTarget? = nil
+
+    static let defaultRestSeconds = 90
+
+    var body: some View {
+        NavigationStack {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 0) {
+                        // Rest timer banner
+                        if isResting {
+                            RestTimerBanner(
+                                secondsRemaining: restSecondsRemaining,
+                                onSkip: { endRest(proxy: proxy) }
+                            )
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                        }
+
+                        // Exercise sections
+                        ForEach(session.sortedLogs) { log in
+                            ExerciseSectionView(
+                                log: log,
+                                activeSet: nextSetAfterRest,
+                                onSetTapped: { set in handleSetTapped(set, proxy: proxy) },
+                                onFailSet: failSet(_:),
+                                onUndoSet: undoSet(_:),
+                                onDeleteSet: deleteSet(_:),
+                                onDeleteExercise: WarmupCalculator.isCore(log.exerciseName) ? nil : { deleteExercise(log) },
+                                onPlateCalc: { weight in
+                                    plateCalcRequest = PlateCalcRequest(weight: weight)
+                                },
+                                onWarmup: WarmupCalculator.isCore(log.exerciseName) ? {
+                                    warmupTarget = WarmupTarget(
+                                        exerciseName: log.exerciseName,
+                                        workingWeight: log.targetWeight
+                                    )
+                                } : nil
+                            )
+                            .id(log.id)
+                        }
+
+                        // Add exercise button
+                        Button {
+                            showAddExercise = true
+                        } label: {
+                            Label("Add Exercise", systemImage: "plus.circle")
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color(.systemGray6))
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                        .padding()
+                    }
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    VStack(spacing: 1) {
+                        Text("Workout \(session.templateName)")
+                            .font(.headline)
+                        TimelineView(.periodic(from: session.date, by: 1)) { context in
+                            Text(elapsedString(from: session.date, to: context.date))
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Finish") { showFinishConfirm = true }
+                        .fontWeight(.semibold)
+                }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", role: .destructive) {
+                        cancelWorkout()
+                    }
+                }
+            }
+            .sheet(item: $plateCalcRequest) { request in
+                PlateCalculatorView(initialWeight: request.weight)
+                    .presentationDetents([.medium])
+            }
+            .sheet(isPresented: $showAddExercise) {
+                AddExerciseSheet { name, sets, reps, weight in
+                    addExercise(name: name, sets: sets, reps: reps, weight: weight)
+                }
+                .presentationDetents([.medium])
+            }
+            .confirmationDialog("Finish workout?", isPresented: $showFinishConfirm, titleVisibility: .visible) {
+                Button("Finish & Save") { onFinish() }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                let incomplete = session.exerciseLogs.flatMap { $0.setLogs }.filter { !$0.isCompleted }.count
+                if incomplete > 0 {
+                    Text("\(incomplete) set(s) not yet completed.")
+                }
+            }
+            .animation(.easeInOut(duration: 0.3), value: isResting)
+            .navigationDestination(item: $warmupTarget) { target in
+                ExerciseWarmupView(target: target)
+            }
+        }
+    }
+
+    // MARK: - Set handling
+
+    private func handleSetTapped(_ set: SetLog, proxy: ScrollViewProxy) {
+        guard !set.isCompleted else { return }
+
+        set.isCompleted = true
+        set.completedReps = set.targetReps
+        try? modelContext.save()
+
+        // Find the next incomplete set across all exercises
+        let allSets = session.sortedLogs.flatMap { $0.sortedSets }
+        let nextSet = allSets.first { !$0.isCompleted }
+
+        startRest(nextSet: nextSet, proxy: proxy)
+    }
+
+    private func undoSet(_ set: SetLog) {
+        set.isCompleted = false
+        set.failed = false
+        set.completedReps = 0
+        try? modelContext.save()
+    }
+
+    private func failSet(_ set: SetLog) {
+        guard !set.isCompleted else { return }
+        set.isCompleted = true
+        set.failed = true
+        // Prompt user for actual reps — for now, default to 0
+        set.completedReps = 0
+        try? modelContext.save()
+    }
+
+    private func startRest(nextSet: SetLog?, proxy: ScrollViewProxy) {
+        nextSetAfterRest = nextSet
+        restSecondsRemaining = Self.defaultRestSeconds
+        isResting = true
+
+        timerCancellable = Timer.publish(every: 1, on: .main, in: .common)
+            .autoconnect()
+            .sink { _ in
+                if restSecondsRemaining > 1 {
+                    restSecondsRemaining -= 1
+                } else {
+                    endRest(proxy: proxy)
+                }
+            }
+    }
+
+    private func endRest(proxy: ScrollViewProxy) {
+        timerCancellable?.cancel()
+        timerCancellable = nil
+
+        // Haptic + sound notification
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        AudioServicesPlaySystemSound(1013) // short chime
+        isResting = false
+
+        // Scroll to the log containing the next set
+        if let next = nextSetAfterRest,
+           let log = session.sortedLogs.first(where: { $0.setLogs.contains(where: { $0.id == next.id }) }) {
+            withAnimation { proxy.scrollTo(log.id, anchor: .top) }
+        }
+        nextSetAfterRest = nil
+    }
+
+    // MARK: - Add exercise
+
+    private func addExercise(name: String, sets: Int, reps: Int, weight: Double) {
+        let order = session.exerciseLogs.count
+        let log = ExerciseLog(exerciseName: name, targetWeight: weight, order: order)
+        for setNum in 1...sets {
+            log.setLogs.append(SetLog(setNumber: setNum, targetReps: reps))
+        }
+        session.exerciseLogs.append(log)
+        try? modelContext.save()
+    }
+
+    // MARK: - Delete exercise
+
+    private func deleteExercise(_ log: ExerciseLog) {
+        session.exerciseLogs.removeAll { $0.id == log.id }
+        modelContext.delete(log)
+        try? modelContext.save()
+    }
+
+    // MARK: - Delete set
+
+    private func deleteSet(_ set: SetLog) {
+        if let log = session.sortedLogs.first(where: { $0.setLogs.contains(where: { $0.id == set.id }) }) {
+            log.setLogs.removeAll { $0.id == set.id }
+        }
+        modelContext.delete(set)
+        try? modelContext.save()
+    }
+
+    // MARK: - Elapsed timer
+
+    private func elapsedString(from start: Date, to now: Date) -> String {
+        let total = max(0, Int(now.timeIntervalSince(start)))
+        let h = total / 3600
+        let m = (total % 3600) / 60
+        let s = total % 60
+        if h > 0 {
+            return String(format: "%d:%02d:%02d", h, m, s)
+        } else {
+            return String(format: "%d:%02d", m, s)
+        }
+    }
+
+    // MARK: - Cancel
+
+    private func cancelWorkout() {
+        timerCancellable?.cancel()
+        modelContext.delete(session)
+        try? modelContext.save()
+        onFinish()
+    }
+}

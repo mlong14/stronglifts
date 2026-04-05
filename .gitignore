@@ -1,0 +1,16 @@
+# Xcode
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+DerivedData/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Secrets — copy StravaConfig.example.swift → StravaConfig.swift and fill in your credentials
+Stronglifts/Stronglifts/Utilities/StravaConfig.swift
+
+# macOS
+.DS_Store
