@@ -45,9 +45,9 @@ struct HistoryView: View {
                 }
                 .padding()
 
-                // Day-of-week headers
+                // Day-of-week headers — use index as ID since "T" and "S" appear twice
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
-                    ForEach(calendar.veryShortWeekdaySymbols, id: \.self) { day in
+                    ForEach(Array(calendar.veryShortWeekdaySymbols.enumerated()), id: \.offset) { _, day in
                         Text(day)
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -55,9 +55,9 @@ struct HistoryView: View {
                 }
                 .padding(.horizontal)
 
-                // Calendar grid
+                // Calendar grid — use index as ID since nil padding days share the same value
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
-                    ForEach(daysInMonth(), id: \.self) { date in
+                    ForEach(Array(daysInMonth().enumerated()), id: \.offset) { _, date in
                         if let date = date {
                             let comps = calendar.dateComponents([.year, .month, .day], from: date)
                             let session = sessionsByDate[comps]

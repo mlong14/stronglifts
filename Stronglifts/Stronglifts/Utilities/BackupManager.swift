@@ -69,8 +69,8 @@ enum BackupManager {
         let backup = BackupFile(
             version: 1,
             exportedAt: .now,
-            templates: templates.sorted { $0.name < $1.name }.map(templateDTO),
-            sessions: sessions.filter { $0.isCompleted }.sorted { $0.date < $1.date }.map(sessionDTO)
+            templates: templates.sorted { $0.name < $1.name }.map { templateDTO($0) },
+            sessions: sessions.filter { $0.isCompleted }.sorted { $0.date < $1.date }.map { sessionDTO($0) }
         )
         let data = try encoder.encode(backup)
         let formatter = DateFormatter()

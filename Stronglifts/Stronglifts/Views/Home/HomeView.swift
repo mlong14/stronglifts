@@ -27,6 +27,33 @@ struct HomeView: View {
         sortedSessions.first(where: { $0.isCompleted })
     }
 
+    /// Most recent completed session date for each exercise name.
+    private var lastSessionDateByExercise: [String: Date] {
+        var result: [String: Date] = [:]
+        for session in sessions where session.isCompleted {
+            for log in session.exerciseLogs {
+                if result[log.exerciseName].map({ session.date > $0 }) ?? true {
+                    result[log.exerciseName] = session.date
+                }
+            }
+        }
+        return result
+    }
+
+    /// Adjusted weight accounting for how long it's been since the exercise was last done.
+    private func adjustedWeight(for exercise: ExerciseTemplate) -> Double {
+        guard let lastDate = lastSessionDateByExercise[exercise.name] else {
+            return exercise.currentWeight
+        }
+        let days = Calendar.current.dateComponents([.day], from: lastDate, to: .now).day ?? 0
+        return DeloadCalculator.adjustedWeight(
+            currentWeight: exercise.currentWeight,
+            increment: exercise.increment,
+            daysSinceLastWorkout: days,
+            isBarbell: WarmupCalculator.isCore(exercise.name)
+        )
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -44,13 +71,22 @@ struct HomeView: View {
                                 .font(.largeTitle.bold())
 
                             ForEach(template.sortedExercises) { exercise in
+                                let suggested = adjustedWeight(for: exercise)
+                                let isDeloaded = suggested < exercise.currentWeight
                                 HStack {
                                     Text(exercise.name)
                                         .font(.body)
                                     Spacer()
-                                    Text("\(exercise.sets)×\(exercise.reps) @ \(formattedWeight(exercise.currentWeight)) lbs")
-                                        .font(.body.monospacedDigit())
-                                        .foregroundStyle(.secondary)
+                                    HStack(spacing: 4) {
+                                        if isDeloaded {
+                                            Image(systemName: "arrow.down.circle.fill")
+                                                .foregroundStyle(.orange)
+                                                .font(.caption)
+                                        }
+                                        Text("\(exercise.sets)×\(exercise.reps) @ \(formattedWeight(suggested)) lbs")
+                                            .font(.body.monospacedDigit())
+                                            .foregroundStyle(isDeloaded ? .orange : .secondary)
+                                    }
                                 }
                             }
 
@@ -103,9 +139,12 @@ struct HomeView: View {
             }
             .navigationTitle("Stronglifts 5×5")
             .fullScreenCover(item: $activeSession) { session in
-                ActiveWorkoutView(session: session, template: nextTemplate) {
-                    finishWorkout(session: session)
-                }
+                ActiveWorkoutView(
+                    session: session,
+                    template: nextTemplate,
+                    onFinish: { finishWorkout(session: session) },
+                    onCancel: { activeSession = nil }
+                )
             }
             .alert("Strava Error", isPresented: .constant(stravaError != nil), presenting: stravaError) { _ in
                 Button("OK") { stravaError = nil }
@@ -122,7 +161,7 @@ struct HomeView: View {
         for (i, exercise) in template.sortedExercises.enumerated() {
             let log = ExerciseLog(
                 exerciseName: exercise.name,
-                targetWeight: exercise.currentWeight,
+                targetWeight: adjustedWeight(for: exercise),
                 order: i
             )
             for setNum in 1...exercise.sets {
@@ -133,6 +172,7 @@ struct HomeView: View {
 
         modelContext.insert(session)
         try? modelContext.save()
+        HeartRateService.shared.startRecording()
         activeSession = session
     }
 
@@ -141,15 +181,19 @@ struct HomeView: View {
         session.isCompleted = true
         session.endTime = .now
 
+        let hr = HeartRateService.shared.stopRecording()
+        session.averageHeartRate = hr.average
+        session.maxHeartRate = hr.max
+
         // Auto-progress: for each exercise that was fully successful, increment weight
-        guard let template = templates.first(where: { $0.name == session.templateName }) else { return }
-        for log in session.exerciseLogs {
-            guard log.wasSuccessful else { continue }
-            let effective = log.effectiveWeight
-            // Progress from the actual weight performed, not the target
-            for t in templates {
-                for ex in t.exercises where ex.name == log.exerciseName {
-                    ex.currentWeight = effective + ex.increment
+        if templates.first(where: { $0.name == session.templateName }) != nil {
+            for log in session.exerciseLogs {
+                guard log.wasSuccessful else { continue }
+                let effective = log.effectiveWeight
+                for t in templates {
+                    for ex in t.exercises where ex.name == log.exerciseName {
+                        ex.currentWeight = effective + ex.increment
+                    }
                 }
             }
         }

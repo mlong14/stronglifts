@@ -10,6 +10,8 @@ struct SetRowView: View {
 
     @State private var showWeightEdit = false
     @State private var weightEditText = ""
+    @State private var showRepEdit = false
+    @State private var repEditText = ""
 
     private var displayWeight: Double { setLog.weight ?? exerciseWeight }
 
@@ -20,8 +22,18 @@ struct SetRowView: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 48, alignment: .leading)
 
-            Text("× \(setLog.targetReps)")
-                .font(.body)
+            // Show actual completed reps (colored) when done, target reps when pending
+            if setLog.isCompleted {
+                let color: Color = setLog.failed ? .red
+                    : setLog.completedReps < setLog.targetReps ? .orange
+                    : .green
+                Text("× \(setLog.completedReps)")
+                    .font(.body)
+                    .foregroundStyle(color)
+            } else {
+                Text("× \(setLog.targetReps)")
+                    .font(.body)
+            }
 
             Spacer()
 
@@ -37,13 +49,11 @@ struct SetRowView: View {
             .buttonStyle(.plain)
 
             if setLog.isCompleted {
-                Button(action: onUndo) {
-                    Image(systemName: setLog.failed ? "xmark.circle.fill" : "checkmark.circle.fill")
-                        .foregroundStyle(setLog.failed ? .red : .green)
-                        .font(.title3)
-                        .padding(.leading, 4)
-                }
-                .buttonStyle(.plain)
+                // Static indicator — undo is via context menu, reps edit via row tap
+                Image(systemName: setLog.failed ? "xmark.circle.fill" : "checkmark.circle.fill")
+                    .foregroundStyle(setLog.failed ? .red : .green)
+                    .font(.title3)
+                    .padding(.leading, 4)
             } else {
                 HStack(spacing: 12) {
                     Button(action: onFail) {
@@ -65,11 +75,23 @@ struct SetRowView: View {
         .background(isNextUp && !setLog.isCompleted ? Color.accentColor.opacity(0.1) : Color.clear)
         .contentShape(Rectangle())
         .onTapGesture {
-            if !setLog.isCompleted { onTap() }
+            if setLog.isCompleted {
+                // Tap a completed row to edit the actual rep count
+                repEditText = String(setLog.completedReps)
+                showRepEdit = true
+            } else {
+                onTap()
+            }
         }
         .sheet(isPresented: $showWeightEdit) {
             WeightEditSheet(text: $weightEditText, hasOverride: setLog.weight != nil) { newWeight in
                 setLog.weight = newWeight
+            }
+            .presentationDetents([.height(200)])
+        }
+        .sheet(isPresented: $showRepEdit) {
+            RepEditSheet(text: $repEditText) { newReps in
+                setLog.completedReps = newReps
             }
             .presentationDetents([.height(200)])
         }
@@ -79,6 +101,45 @@ struct SetRowView: View {
         w.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(w)) : String(w)
     }
 }
+
+// MARK: - Rep edit sheet
+
+struct RepEditSheet: View {
+    @Binding var text: String
+    let onSave: (Int) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    TextField("Reps", text: $text)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.center)
+                        .font(.system(size: 52, weight: .bold, design: .monospaced))
+                        .frame(maxWidth: 160)
+                    Text("reps")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, 32)
+                Spacer()
+            }
+            .navigationTitle("Edit Reps")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        if let v = Int(text) { onSave(v) }
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Weight edit sheet
 
 struct WeightEditSheet: View {
     @Binding var text: String

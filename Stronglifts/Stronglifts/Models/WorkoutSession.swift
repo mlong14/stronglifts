@@ -7,6 +7,8 @@ final class WorkoutSession {
     var endTime: Date?
     var templateName: String  // "A" or "B"
     var isCompleted: Bool
+    var averageHeartRate: Double? = nil
+    var maxHeartRate: Int? = nil
     @Relationship(deleteRule: .cascade)
     var exerciseLogs: [ExerciseLog] = []
 

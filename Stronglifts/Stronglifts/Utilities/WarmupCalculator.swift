@@ -33,12 +33,12 @@ enum WarmupCalculator {
         }
 
         let w60 = rounded(workingWeight * 0.60)
-        if w60 > w40 {
+        if w60 > w40 && w60 > barWeight {
             result.append(WarmupSet(weight: w60, label: "60%"))
         }
 
         let w80 = rounded(workingWeight * 0.80)
-        if w80 > w60 && w80 < workingWeight {
+        if w80 > w60 && w80 > barWeight && w80 < workingWeight {
             result.append(WarmupSet(weight: w80, label: "80%"))
         }
 

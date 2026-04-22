@@ -11,7 +11,7 @@ struct WorkoutProgressView: View {
     private var allExerciseNames: [String] {
         var seen = Set<String>()
         var result: [String] = []
-        for session in sessions {
+        for session in sessions where session.isCompleted {
             for log in session.sortedLogs {
                 if seen.insert(log.exerciseName).inserted {
                     result.append(log.exerciseName)
@@ -23,10 +23,11 @@ struct WorkoutProgressView: View {
 
     private var chartData: [(date: Date, weight: Double)] {
         sessions
+            .filter { $0.isCompleted }
             .sorted { $0.date < $1.date }
             .compactMap { session -> (Date, Double)? in
                 guard let log = session.exerciseLogs.first(where: { $0.exerciseName == selectedExercise }) else { return nil }
-                return (session.date, log.targetWeight)
+                return (session.date, log.effectiveWeight)
             }
     }
 
@@ -78,20 +79,20 @@ struct WorkoutProgressView: View {
                             .foregroundStyle(Color.accentColor)
                             .interpolationMethod(.linear)
 
+                            let isSelected = selectedPoint?.date == point.date
                             PointMark(
                                 x: .value("Date", point.date),
                                 y: .value("Weight", point.weight)
                             )
-                            .foregroundStyle(Color.accentColor)
-                            .symbolSize(selectedPoint?.date == point.date ? 120 : 50)
-
-                            if let sp = selectedPoint, sp.date == point.date {
-                                PointMark(
-                                    x: .value("Date", point.date),
-                                    y: .value("Weight", point.weight)
-                                )
-                                .foregroundStyle(Color.primary)
-                                .annotation(position: .top, spacing: 6) {
+                            .foregroundStyle(isSelected ? Color.primary : Color.accentColor)
+                            .symbolSize(isSelected ? 100 : 40)
+                            .annotation(
+                                position: .top,
+                                alignment: .center,
+                                spacing: 6,
+                                overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
+                            ) {
+                                if isSelected {
                                     VStack(spacing: 2) {
                                         Text("\(Int(point.weight)) lbs")
                                             .font(.caption.bold())
@@ -101,7 +102,7 @@ struct WorkoutProgressView: View {
                                     }
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
-                                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
+                                    .background(Color(.systemGray5), in: RoundedRectangle(cornerRadius: 6))
                                 }
                             }
                         }

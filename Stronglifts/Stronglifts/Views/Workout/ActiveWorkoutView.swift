@@ -13,9 +13,14 @@ struct ActiveWorkoutView: View {
     @Bindable var session: WorkoutSession
     let template: WorkoutTemplate?
     let onFinish: () -> Void
+    let onCancel: () -> Void
+
+    @ObservedObject private var heartRate = HeartRateService.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     // Rest timer state
     @State private var restSecondsRemaining: Int = 0
+    @State private var restEndDate: Date? = nil
     @State private var isResting = false
     @State private var nextSetAfterRest: SetLog?
     @State private var timerCancellable: AnyCancellable?
@@ -53,6 +58,7 @@ struct ActiveWorkoutView: View {
                                 onFailSet: failSet(_:),
                                 onUndoSet: undoSet(_:),
                                 onDeleteSet: deleteSet(_:),
+                                onAddSet: { addSet(to: log) },
                                 onDeleteExercise: WarmupCalculator.isCore(log.exerciseName) ? nil : { deleteExercise(log) },
                                 onPlateCalc: { weight in
                                     plateCalcRequest = PlateCalcRequest(weight: weight)
@@ -80,6 +86,11 @@ struct ActiveWorkoutView: View {
                         .padding()
                     }
                 }
+                .onChange(of: scenePhase) { _, newPhase in
+                    if newPhase == .active {
+                        syncRestTimerIfNeeded(proxy: proxy)
+                    }
+                }
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -87,10 +98,30 @@ struct ActiveWorkoutView: View {
                     VStack(spacing: 1) {
                         Text("Workout \(session.templateName)")
                             .font(.headline)
-                        TimelineView(.periodic(from: session.date, by: 1)) { context in
-                            Text(elapsedString(from: session.date, to: context.date))
-                                .font(.caption.monospacedDigit())
+                        HStack(spacing: 8) {
+                            TimelineView(.periodic(from: session.date, by: 1)) { context in
+                                Text(elapsedString(from: session.date, to: context.date))
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                            if let bpm = heartRate.currentBPM {
+                                HStack(spacing: 2) {
+                                    Image(systemName: "heart.fill")
+                                        .foregroundStyle(.red)
+                                    Text("\(bpm)")
+                                        .monospacedDigit()
+                                        .frame(minWidth: 28, alignment: .leading)
+                                }
+                                .font(.caption)
+                            } else if heartRate.isScanning {
+                                HStack(spacing: 2) {
+                                    Image(systemName: "heart")
+                                        .foregroundStyle(.secondary)
+                                    Text("Searching…")
+                                }
+                                .font(.caption)
                                 .foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }
@@ -112,7 +143,7 @@ struct ActiveWorkoutView: View {
                 AddExerciseSheet { name, sets, reps, weight in
                     addExercise(name: name, sets: sets, reps: reps, weight: weight)
                 }
-                .presentationDetents([.medium])
+                .presentationDetents([.medium, .large])
             }
             .confirmationDialog("Finish workout?", isPresented: $showFinishConfirm, titleVisibility: .visible) {
                 Button("Finish & Save") { onFinish() }
@@ -164,21 +195,36 @@ struct ActiveWorkoutView: View {
 
     private func startRest(nextSet: SetLog?, proxy: ScrollViewProxy) {
         nextSetAfterRest = nextSet
+        let endDate = Date().addingTimeInterval(Double(Self.defaultRestSeconds))
+        restEndDate = endDate
         restSecondsRemaining = Self.defaultRestSeconds
         isResting = true
 
         timerCancellable = Timer.publish(every: 1, on: .main, in: .common)
             .autoconnect()
             .sink { _ in
-                if restSecondsRemaining > 1 {
-                    restSecondsRemaining -= 1
+                let remaining = Int(endDate.timeIntervalSinceNow.rounded(.up))
+                if remaining > 0 {
+                    restSecondsRemaining = remaining
                 } else {
                     endRest(proxy: proxy)
                 }
             }
     }
 
+    // Called when returning from background so the timer display snaps to reality.
+    private func syncRestTimerIfNeeded(proxy: ScrollViewProxy) {
+        guard isResting, let endDate = restEndDate else { return }
+        let remaining = Int(endDate.timeIntervalSinceNow.rounded(.up))
+        if remaining > 0 {
+            restSecondsRemaining = remaining
+        } else {
+            endRest(proxy: proxy)
+        }
+    }
+
     private func endRest(proxy: ScrollViewProxy) {
+        guard isResting else { return }
         timerCancellable?.cancel()
         timerCancellable = nil
 
@@ -193,6 +239,15 @@ struct ActiveWorkoutView: View {
             withAnimation { proxy.scrollTo(log.id, anchor: .top) }
         }
         nextSetAfterRest = nil
+    }
+
+    // MARK: - Add set to existing exercise
+
+    private func addSet(to log: ExerciseLog) {
+        let setNumber = log.setLogs.count + 1
+        let targetReps = log.sortedSets.last?.targetReps ?? 5
+        log.setLogs.append(SetLog(setNumber: setNumber, targetReps: targetReps))
+        try? modelContext.save()
     }
 
     // MARK: - Add exercise
@@ -243,8 +298,9 @@ struct ActiveWorkoutView: View {
 
     private func cancelWorkout() {
         timerCancellable?.cancel()
+        HeartRateService.shared.stopRecording()
         modelContext.delete(session)
         try? modelContext.save()
-        onFinish()
+        onCancel()
     }
 }

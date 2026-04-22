@@ -88,20 +88,31 @@ final class StravaService: NSObject, ObservableObject {
     func postWorkout(_ session: WorkoutSession, duration: TimeInterval) async throws {
         let token = try await validToken()
 
-        let description = session.sortedLogs.map { log in
+        var lines = session.sortedLogs.map { log in
             let reps   = log.setLogs.first?.targetReps ?? 0
             let weight = Int(log.targetWeight)
             let flag   = log.wasSuccessful ? "" : " ⚠️"
             return "\(log.exerciseName): \(log.setLogs.count)×\(reps) @ \(weight) lbs\(flag)"
-        }.joined(separator: "\n")
+        }
+        if let avg = session.averageHeartRate, let max = session.maxHeartRate {
+            lines.append("❤️ Avg \(Int(avg.rounded())) bpm · Max \(max) bpm")
+        }
+        let description = lines.joined(separator: "\n")
 
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "name":             "Workout \(session.templateName) — Stronglifts 5×5",
             "sport_type":       "WeightTraining",
             "start_date_local": localISO8601(session.date),
             "elapsed_time":     Int(duration),
             "description":      description,
         ]
+
+        if let avg = session.averageHeartRate {
+            body["average_heartrate"] = avg
+        }
+        if let max = session.maxHeartRate {
+            body["max_heartrate"] = max
+        }
 
         var req = URLRequest(url: URL(string: "https://www.strava.com/api/v3/activities")!)
         req.httpMethod = "POST"

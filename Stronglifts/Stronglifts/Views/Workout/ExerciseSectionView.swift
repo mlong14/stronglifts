@@ -7,6 +7,7 @@ struct ExerciseSectionView: View {
     let onFailSet: (SetLog) -> Void
     let onUndoSet: (SetLog) -> Void
     let onDeleteSet: (SetLog) -> Void
+    let onAddSet: () -> Void
     let onDeleteExercise: (() -> Void)?   // nil = core exercise, not removable
     let onPlateCalc: (Double) -> Void
     let onWarmup: (() -> Void)?   // nil = not a core exercise, no warmup button
@@ -70,6 +71,13 @@ struct ExerciseSectionView: View {
                     onUndo: { onUndoSet(set) }
                 )
                 .contextMenu {
+                    if set.isCompleted {
+                        Button {
+                            onUndoSet(set)
+                        } label: {
+                            Label("Mark Incomplete", systemImage: "arrow.uturn.backward.circle")
+                        }
+                    }
                     Button(role: .destructive) {
                         onDeleteSet(set)
                     } label: {
@@ -78,6 +86,16 @@ struct ExerciseSectionView: View {
                 }
                 Divider().padding(.leading)
             }
+
+            // Add set
+            Button(action: onAddSet) {
+                Label("Add Set", systemImage: "plus")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.accentColor)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+            }
+            .buttonStyle(.plain)
         }
         .background(Color(.systemGray6))
         .clipShape(RoundedRectangle(cornerRadius: 12))

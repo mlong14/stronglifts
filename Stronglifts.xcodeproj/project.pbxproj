@@ -6,7 +6,18 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		392CF69C2F991E65007FB631 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 39B844AF2F7CE18F005D4599 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 39B844B62F7CE18F005D4599;
+			remoteInfo = Stronglifts;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		392CF6982F991E65007FB631 /* StrongliftsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StrongliftsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		39B844B72F7CE18F005D4599 /* Stronglifts.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Stronglifts.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -21,6 +32,11 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		392CF6992F991E65007FB631 /* StrongliftsTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = StrongliftsTests;
+			sourceTree = "<group>";
+		};
 		39B844B92F7CE18F005D4599 /* Stronglifts */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -32,6 +48,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		392CF6952F991E65007FB631 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		39B844B42F7CE18F005D4599 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -46,6 +69,7 @@
 			isa = PBXGroup;
 			children = (
 				39B844B92F7CE18F005D4599 /* Stronglifts */,
+				392CF6992F991E65007FB631 /* StrongliftsTests */,
 				39B844B82F7CE18F005D4599 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -54,6 +78,7 @@
 			isa = PBXGroup;
 			children = (
 				39B844B72F7CE18F005D4599 /* Stronglifts.app */,
+				392CF6982F991E65007FB631 /* StrongliftsTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -61,6 +86,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		392CF6972F991E65007FB631 /* StrongliftsTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 392CF6A02F991E65007FB631 /* Build configuration list for PBXNativeTarget "StrongliftsTests" */;
+			buildPhases = (
+				392CF6942F991E65007FB631 /* Sources */,
+				392CF6952F991E65007FB631 /* Frameworks */,
+				392CF6962F991E65007FB631 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				392CF69D2F991E65007FB631 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				392CF6992F991E65007FB631 /* StrongliftsTests */,
+			);
+			name = StrongliftsTests;
+			packageProductDependencies = (
+			);
+			productName = StrongliftsTests;
+			productReference = 392CF6982F991E65007FB631 /* StrongliftsTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		39B844B62F7CE18F005D4599 /* Stronglifts */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 39B844C22F7CE190005D4599 /* Build configuration list for PBXNativeTarget "Stronglifts" */;
@@ -93,6 +141,10 @@
 				LastSwiftUpdateCheck = 2640;
 				LastUpgradeCheck = 2640;
 				TargetAttributes = {
+					392CF6972F991E65007FB631 = {
+						CreatedOnToolsVersion = 26.4;
+						TestTargetID = 39B844B62F7CE18F005D4599;
+					};
 					39B844B62F7CE18F005D4599 = {
 						CreatedOnToolsVersion = 26.4;
 					};
@@ -113,11 +165,19 @@
 			projectRoot = "";
 			targets = (
 				39B844B62F7CE18F005D4599 /* Stronglifts */,
+				392CF6972F991E65007FB631 /* StrongliftsTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		392CF6962F991E65007FB631 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		39B844B52F7CE18F005D4599 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -128,6 +188,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		392CF6942F991E65007FB631 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		39B844B32F7CE18F005D4599 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -137,7 +204,70 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		392CF69D2F991E65007FB631 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilters = (
+				ios,
+				xros,
+			);
+			target = 39B844B62F7CE18F005D4599 /* Stronglifts */;
+			targetProxy = 392CF69C2F991E65007FB631 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		392CF69E2F991E65007FB631 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5BH5FNNBA3;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = mwlong.StrongliftsTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = xros;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Stronglifts.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Stronglifts";
+				XROS_DEPLOYMENT_TARGET = 26.4;
+			};
+			name = Debug;
+		};
+		392CF69F2F991E65007FB631 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5BH5FNNBA3;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = mwlong.StrongliftsTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = xros;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Stronglifts.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Stronglifts";
+				VALIDATE_PRODUCT = YES;
+				XROS_DEPLOYMENT_TARGET = 26.4;
+			};
+			name = Release;
+		};
 		39B844C02F7CE190005D4599 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -349,6 +479,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		392CF6A02F991E65007FB631 /* Build configuration list for PBXNativeTarget "StrongliftsTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				392CF69E2F991E65007FB631 /* Debug */,
+				392CF69F2F991E65007FB631 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		39B844B22F7CE18F005D4599 /* Build configuration list for PBXProject "Stronglifts" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
