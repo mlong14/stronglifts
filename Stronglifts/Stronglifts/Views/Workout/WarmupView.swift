@@ -1,20 +1,27 @@
 import SwiftUI
+import SwiftData
 
 struct WarmupTarget: Identifiable, Hashable {
     let id = UUID()
     let exerciseName: String
     let workingWeight: Double
+    let logID: PersistentIdentifier
+
+    static func == (lhs: WarmupTarget, rhs: WarmupTarget) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
 struct ExerciseWarmupView: View {
     let target: WarmupTarget
+    @Bindable var log: ExerciseLog
     @Environment(\.dismiss) private var dismiss
 
-    @State private var warmupSets: [WarmupSet] = []
-    @State private var completedIDs: Set<UUID> = []
+    private var warmupSets: [WarmupSet] {
+        WarmupCalculator.sets(for: target.workingWeight)
+    }
 
     private var allDone: Bool {
-        !warmupSets.isEmpty && warmupSets.allSatisfy { completedIDs.contains($0.id) }
+        !warmupSets.isEmpty && log.warmupCompletedCount >= warmupSets.count
     }
 
     var body: some View {
@@ -31,8 +38,7 @@ struct ExerciseWarmupView: View {
                             .font(.title2.bold().monospacedDigit())
                     }
                     Spacer()
-                    // Progress
-                    Text("\(completedIDs.count)/\(warmupSets.count)")
+                    Text("\(log.warmupCompletedCount)/\(warmupSets.count)")
                         .font(.headline.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
@@ -44,8 +50,9 @@ struct ExerciseWarmupView: View {
 
                 // Warmup sets
                 VStack(spacing: 0) {
-                    ForEach(warmupSets) { warmupSet in
-                        let done = completedIDs.contains(warmupSet.id)
+                    ForEach(Array(warmupSets.enumerated()), id: \.offset) { index, warmupSet in
+                        let done = index < log.warmupCompletedCount
+                        let isNext = index == log.warmupCompletedCount
 
                         HStack(spacing: 12) {
                             Text(warmupSet.label)
@@ -55,6 +62,7 @@ struct ExerciseWarmupView: View {
 
                             Text("\(formattedWeight(warmupSet.weight)) lbs")
                                 .font(.body.monospacedDigit())
+                                .foregroundStyle(done ? .secondary : .primary)
 
                             Text("× \(warmupSet.reps)")
                                 .font(.body)
@@ -63,18 +71,23 @@ struct ExerciseWarmupView: View {
                             Spacer()
 
                             Button {
-                                completedIDs.insert(warmupSet.id)
+                                log.warmupCompletedCount = index + 1
+                                if log.warmupCompletedCount >= warmupSets.count {
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                                        dismiss()
+                                    }
+                                }
                             } label: {
-                                Image(systemName: done ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(done ? .green : Color.secondary)
+                                Image(systemName: done ? "checkmark.circle.fill" : (isNext ? "checkmark.circle" : "circle"))
+                                    .foregroundStyle(done ? .green : (isNext ? Color.accentColor : Color.secondary))
                                     .font(.title2)
                             }
                             .buttonStyle(.plain)
-                            .disabled(done)
+                            .disabled(done || !isNext)
                         }
                         .padding(.horizontal)
                         .padding(.vertical, 14)
-                        .background(done ? Color.clear : Color.clear)
+                        .background(isNext && !done ? Color.accentColor.opacity(0.07) : Color.clear)
                         .contentShape(Rectangle())
 
                         Divider().padding(.leading)
@@ -89,16 +102,6 @@ struct ExerciseWarmupView: View {
         }
         .navigationTitle("\(target.exerciseName) Warmup")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            warmupSets = WarmupCalculator.sets(for: target.workingWeight)
-        }
-        .onChange(of: completedIDs) {
-            if allDone {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    dismiss()
-                }
-            }
-        }
     }
 
     private func formattedWeight(_ w: Double) -> String {

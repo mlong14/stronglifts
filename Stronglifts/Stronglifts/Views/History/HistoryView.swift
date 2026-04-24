@@ -18,6 +18,20 @@ struct HistoryView: View {
         }
     }
 
+    private var sessionsThisMonth: [WorkoutSession] {
+        sessions.filter { session in
+            guard session.isCompleted else { return false }
+            return calendar.isDate(session.date, equalTo: displayedMonth, toGranularity: .month)
+        }
+    }
+
+    private var totalDurationThisMonth: Int {
+        sessionsThisMonth.reduce(0) { total, s in
+            guard let end = s.endTime else { return total }
+            return total + max(0, Int(end.timeIntervalSince(s.date))) / 60
+        }
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -27,6 +41,7 @@ struct HistoryView: View {
                         displayedMonth = calendar.date(byAdding: .month, value: -1, to: displayedMonth) ?? displayedMonth
                     } label: {
                         Image(systemName: "chevron.left")
+                            .fontWeight(.semibold)
                     }
 
                     Spacer()
@@ -40,22 +55,40 @@ struct HistoryView: View {
                         displayedMonth = calendar.date(byAdding: .month, value: 1, to: displayedMonth) ?? displayedMonth
                     } label: {
                         Image(systemName: "chevron.right")
+                            .fontWeight(.semibold)
                     }
                     .disabled(calendar.isDate(displayedMonth, equalTo: .now, toGranularity: .month))
                 }
-                .padding()
+                .padding(.horizontal)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
 
-                // Day-of-week headers — use index as ID since "T" and "S" appear twice
+                // Monthly stats
+                if !sessionsThisMonth.isEmpty {
+                    HStack(spacing: 16) {
+                        Label("\(sessionsThisMonth.count) workout\(sessionsThisMonth.count == 1 ? "" : "s")", systemImage: "figure.strengthtraining.traditional")
+                        if totalDurationThisMonth > 0 {
+                            Label("\(totalDurationThisMonth) min", systemImage: "clock")
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
+                    .padding(.bottom, 6)
+                }
+
+                // Day-of-week headers
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
                     ForEach(Array(calendar.veryShortWeekdaySymbols.enumerated()), id: \.offset) { _, day in
                         Text(day)
-                            .font(.caption)
+                            .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
                 }
                 .padding(.horizontal)
 
-                // Calendar grid — use index as ID since nil padding days share the same value
+                // Calendar grid
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
                     ForEach(Array(daysInMonth().enumerated()), id: \.offset) { _, date in
                         if let date = date {
@@ -64,21 +97,20 @@ struct HistoryView: View {
                             CalendarDayCell(
                                 date: date,
                                 session: session,
-                                isSelected: selectedSession?.id == session?.id
+                                isSelected: selectedSession?.id == session?.id && session != nil
                             )
                             .onTapGesture {
                                 selectedSession = session
                             }
                         } else {
-                            Color.clear
-                                .aspectRatio(1, contentMode: .fit)
+                            Color.clear.aspectRatio(1, contentMode: .fit)
                         }
                     }
                 }
                 .padding(.horizontal)
 
                 Divider()
-                    .padding(.vertical)
+                    .padding(.vertical, 12)
 
                 // Selected session detail
                 if let session = selectedSession {
@@ -95,8 +127,14 @@ struct HistoryView: View {
             }
             .navigationTitle("History")
             .onAppear {
-                let todayComps = calendar.dateComponents([.year, .month, .day], from: .now)
-                selectedSession = sessionsByDate[todayComps]
+                if let latest = sessions.filter({ $0.isCompleted }).max(by: { $0.date < $1.date }) {
+                    displayedMonth = latest.date
+                    let comps = calendar.dateComponents([.year, .month, .day], from: latest.date)
+                    selectedSession = sessionsByDate[comps]
+                } else {
+                    let todayComps = calendar.dateComponents([.year, .month, .day], from: .now)
+                    selectedSession = sessionsByDate[todayComps]
+                }
             }
         }
     }
@@ -131,28 +169,36 @@ struct CalendarDayCell: View {
 
     private var calendar: Calendar { .current }
 
+    // A = blue accent, B = orange
+    private var templateColor: Color {
+        guard let name = session?.templateName else { return .accentColor }
+        return name == "A" ? Color.accentColor : Color.orange
+    }
+
     var body: some View {
         ZStack {
+            // Background circle
             Circle()
                 .fill(
                     session != nil
-                        ? (isSelected ? Color.accentColor : Color.accentColor.opacity(0.25))
+                        ? (isSelected ? templateColor : templateColor.opacity(0.18))
                         : Color.clear
                 )
 
+            // Today ring (when no workout)
             if calendar.isDateInToday(date) && session == nil {
-                Circle().strokeBorder(Color.secondary, lineWidth: 1)
+                Circle().strokeBorder(Color.secondary.opacity(0.5), lineWidth: 1)
             }
 
-            VStack(spacing: 2) {
+            VStack(spacing: 1) {
                 Text("\(calendar.component(.day, from: date))")
-                    .font(.caption.monospacedDigit())
+                    .font(.system(size: 12, weight: session != nil ? .semibold : .regular, design: .rounded))
                     .foregroundStyle(session != nil ? (isSelected ? .white : .primary) : .primary)
 
                 if let s = session {
                     Text(s.templateName)
-                        .font(.system(size: 7, weight: .bold))
-                        .foregroundStyle(isSelected ? .white.opacity(0.8) : .accentColor)
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                        .foregroundStyle(isSelected ? .white : templateColor)
                 }
             }
         }
@@ -169,19 +215,23 @@ struct SessionDetailView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Workout \(session.templateName) · \(session.date.formatted(date: .complete, time: .omitted))")
-                        .font(.headline)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Workout \(session.templateName)")
+                        .font(.title3.bold())
+                    Text(session.date.formatted(date: .complete, time: .omitted))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
                     HStack(spacing: 8) {
-                        Text(session.date.formatted(date: .omitted, time: .shortened))
                         if let end = session.endTime {
-                            Text("→")
-                            Text(end.formatted(date: .omitted, time: .shortened))
-                            Text("·")
-                            Text(durationString(from: session.date, to: end))
+                            Label(durationString(from: session.date, to: end), systemImage: "clock")
+                        }
+                        if let bpm = session.averageHeartRate, bpm > 0 {
+                            Label("\(Int(bpm)) bpm avg", systemImage: "heart.fill")
+                                .foregroundStyle(.red)
                         }
                     }
-                    .font(.caption.monospacedDigit())
+                    .font(.caption)
                     .foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -216,7 +266,7 @@ struct SessionDetailView: View {
 
                     HStack(spacing: 4) {
                         ForEach(log.sortedSets) { set in
-                            Image(systemName: setIconName(set, targetWeight: log.targetWeight))
+                            Image(systemName: setIconName(set))
                                 .foregroundStyle(setIconColor(set, targetWeight: log.targetWeight))
                                 .font(.caption)
                         }
@@ -241,7 +291,7 @@ struct SessionDetailView: View {
         return "\(m)m"
     }
 
-    private func setIconName(_ set: SetLog, targetWeight: Double) -> String {
+    private func setIconName(_ set: SetLog) -> String {
         if !set.isCompleted { return "circle" }
         if set.failed { return "xmark.circle.fill" }
         return "checkmark.circle.fill"

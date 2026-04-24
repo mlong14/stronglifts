@@ -6,6 +6,7 @@ final class ExerciseLog {
     var exerciseName: String
     var targetWeight: Double
     var order: Int
+    var warmupCompletedCount: Int = 0
     var session: WorkoutSession?
     @Relationship(deleteRule: .cascade)
     var setLogs: [SetLog] = []

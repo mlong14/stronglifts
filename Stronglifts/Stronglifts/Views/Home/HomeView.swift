@@ -73,12 +73,18 @@ struct HomeView: View {
                             ForEach(template.sortedExercises) { exercise in
                                 let suggested = adjustedWeight(for: exercise)
                                 let isDeloaded = suggested < exercise.currentWeight
+                                let daysAgo = lastSessionDateByExercise[exercise.name].map {
+                                    Calendar.current.dateComponents([.day], from: $0, to: .now).day ?? 0
+                                }
                                 HStack {
                                     Text(exercise.name)
                                         .font(.body)
                                     Spacer()
                                     HStack(spacing: 4) {
-                                        if isDeloaded {
+                                        if isDeloaded, let days = daysAgo {
+                                            Text("\(days)d ago")
+                                                .font(.caption2)
+                                                .foregroundStyle(.orange.opacity(0.8))
                                             Image(systemName: "arrow.down.circle.fill")
                                                 .foregroundStyle(.orange)
                                                 .font(.caption)

@@ -19,9 +19,18 @@ struct ExerciseSectionView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(log.exerciseName)
                         .font(.headline)
-                    Text("\(formattedWeight(log.targetWeight)) lbs")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 6) {
+                        Text("\(formattedWeight(log.targetWeight)) lbs")
+                        let completed = log.setLogs.filter { $0.isCompleted }.count
+                        let total = log.setLogs.count
+                        if completed > 0 {
+                            Text("·")
+                            Text("\(completed)/\(total) sets")
+                                .foregroundStyle(completed == total ? .green : .primary)
+                        }
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
                 }
                 Spacer()
                 if let onWarmup {

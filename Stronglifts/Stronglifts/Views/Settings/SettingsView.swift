@@ -193,6 +193,13 @@ struct ExerciseEditView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
+    private let weightValues = Array(stride(from: 0.0, through: 500.0, by: 2.5))
+    private let incrementValues = [2.5, 5.0, 10.0, 15.0, 20.0, 25.0]
+
+    private func fmt(_ w: Double) -> String {
+        w.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(w)) : String(w)
+    }
+
     var body: some View {
         Form {
             Section("Exercise") {
@@ -200,28 +207,44 @@ struct ExerciseEditView: View {
             }
 
             Section("Program") {
-                Stepper("Sets: \(exercise.sets)", value: $exercise.sets, in: 1...10)
-                Stepper("Reps: \(exercise.reps)", value: $exercise.reps, in: 1...20)
+                HStack {
+                    Text("Sets")
+                    Spacer()
+                    Picker("Sets", selection: $exercise.sets) {
+                        ForEach(1...10, id: \.self) { Text("\($0)").tag($0) }
+                    }
+                    .pickerStyle(.menu)
+                }
+                HStack {
+                    Text("Reps")
+                    Spacer()
+                    Picker("Reps", selection: $exercise.reps) {
+                        ForEach(1...20, id: \.self) { Text("\($0)").tag($0) }
+                    }
+                    .pickerStyle(.menu)
+                }
             }
 
             Section("Weight") {
                 HStack {
                     Text("Current")
                     Spacer()
-                    TextField("0", value: $exercise.currentWeight, format: .number)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 80)
-                    Text("lbs").foregroundStyle(.secondary)
+                    Picker("Current weight", selection: $exercise.currentWeight) {
+                        ForEach(weightValues, id: \.self) { v in
+                            Text(fmt(v) + " lbs").tag(v)
+                        }
+                    }
+                    .pickerStyle(.menu)
                 }
                 HStack {
                     Text("Increment")
                     Spacer()
-                    TextField("0", value: $exercise.increment, format: .number)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 80)
-                    Text("lbs").foregroundStyle(.secondary)
+                    Picker("Increment", selection: $exercise.increment) {
+                        ForEach(incrementValues, id: \.self) { v in
+                            Text(fmt(v) + " lbs").tag(v)
+                        }
+                    }
+                    .pickerStyle(.menu)
                 }
             }
         }

@@ -41,6 +41,17 @@
                ReferencedContainer = "container:Stronglifts.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "392CF6ED2F9B33E9007FB631"
+               BuildableName = "StrongliftsUITests.xctest"
+               BlueprintName = "StrongliftsUITests"
+               ReferencedContainer = "container:Stronglifts.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

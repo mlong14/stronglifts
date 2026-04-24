@@ -14,10 +14,18 @@
 			remoteGlobalIDString = 39B844B62F7CE18F005D4599;
 			remoteInfo = Stronglifts;
 		};
+		392CF6F42F9B33E9007FB631 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 39B844AF2F7CE18F005D4599 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 39B844B62F7CE18F005D4599;
+			remoteInfo = Stronglifts;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		392CF6982F991E65007FB631 /* StrongliftsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StrongliftsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		392CF6EE2F9B33E9007FB631 /* StrongliftsUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StrongliftsUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		39B844B72F7CE18F005D4599 /* Stronglifts.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Stronglifts.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -37,6 +45,11 @@
 			path = StrongliftsTests;
 			sourceTree = "<group>";
 		};
+		392CF6EF2F9B33E9007FB631 /* StrongliftsUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = StrongliftsUITests;
+			sourceTree = "<group>";
+		};
 		39B844B92F7CE18F005D4599 /* Stronglifts */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -49,6 +62,13 @@
 
 /* Begin PBXFrameworksBuildPhase section */
 		392CF6952F991E65007FB631 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		392CF6EB2F9B33E9007FB631 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -70,6 +90,7 @@
 			children = (
 				39B844B92F7CE18F005D4599 /* Stronglifts */,
 				392CF6992F991E65007FB631 /* StrongliftsTests */,
+				392CF6EF2F9B33E9007FB631 /* StrongliftsUITests */,
 				39B844B82F7CE18F005D4599 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -79,6 +100,7 @@
 			children = (
 				39B844B72F7CE18F005D4599 /* Stronglifts.app */,
 				392CF6982F991E65007FB631 /* StrongliftsTests.xctest */,
+				392CF6EE2F9B33E9007FB631 /* StrongliftsUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -108,6 +130,29 @@
 			productName = StrongliftsTests;
 			productReference = 392CF6982F991E65007FB631 /* StrongliftsTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		392CF6ED2F9B33E9007FB631 /* StrongliftsUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 392CF6F82F9B33E9007FB631 /* Build configuration list for PBXNativeTarget "StrongliftsUITests" */;
+			buildPhases = (
+				392CF6EA2F9B33E9007FB631 /* Sources */,
+				392CF6EB2F9B33E9007FB631 /* Frameworks */,
+				392CF6EC2F9B33E9007FB631 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				392CF6F52F9B33E9007FB631 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				392CF6EF2F9B33E9007FB631 /* StrongliftsUITests */,
+			);
+			name = StrongliftsUITests;
+			packageProductDependencies = (
+			);
+			productName = StrongliftsUITests;
+			productReference = 392CF6EE2F9B33E9007FB631 /* StrongliftsUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 		39B844B62F7CE18F005D4599 /* Stronglifts */ = {
 			isa = PBXNativeTarget;
@@ -145,6 +190,10 @@
 						CreatedOnToolsVersion = 26.4;
 						TestTargetID = 39B844B62F7CE18F005D4599;
 					};
+					392CF6ED2F9B33E9007FB631 = {
+						CreatedOnToolsVersion = 26.4;
+						TestTargetID = 39B844B62F7CE18F005D4599;
+					};
 					39B844B62F7CE18F005D4599 = {
 						CreatedOnToolsVersion = 26.4;
 					};
@@ -166,12 +215,20 @@
 			targets = (
 				39B844B62F7CE18F005D4599 /* Stronglifts */,
 				392CF6972F991E65007FB631 /* StrongliftsTests */,
+				392CF6ED2F9B33E9007FB631 /* StrongliftsUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		392CF6962F991E65007FB631 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		392CF6EC2F9B33E9007FB631 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -189,6 +246,13 @@
 
 /* Begin PBXSourcesBuildPhase section */
 		392CF6942F991E65007FB631 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		392CF6EA2F9B33E9007FB631 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -213,6 +277,11 @@
 			);
 			target = 39B844B62F7CE18F005D4599 /* Stronglifts */;
 			targetProxy = 392CF69C2F991E65007FB631 /* PBXContainerItemProxy */;
+		};
+		392CF6F52F9B33E9007FB631 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 39B844B62F7CE18F005D4599 /* Stronglifts */;
+			targetProxy = 392CF6F42F9B33E9007FB631 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -265,6 +334,51 @@
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Stronglifts.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Stronglifts";
 				VALIDATE_PRODUCT = YES;
 				XROS_DEPLOYMENT_TARGET = 26.4;
+			};
+			name = Release;
+		};
+		392CF6F62F9B33E9007FB631 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5BH5FNNBA3;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = mwlong.StrongliftsUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Stronglifts;
+			};
+			name = Debug;
+		};
+		392CF6F72F9B33E9007FB631 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5BH5FNNBA3;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = mwlong.StrongliftsUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Stronglifts;
+				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
 		};
@@ -484,6 +598,15 @@
 			buildConfigurations = (
 				392CF69E2F991E65007FB631 /* Debug */,
 				392CF69F2F991E65007FB631 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		392CF6F82F9B33E9007FB631 /* Build configuration list for PBXNativeTarget "StrongliftsUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				392CF6F62F9B33E9007FB631 /* Debug */,
+				392CF6F72F9B33E9007FB631 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

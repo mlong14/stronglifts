@@ -16,13 +16,24 @@ struct SetRowView: View {
     private var displayWeight: Double { setLog.weight ?? exerciseWeight }
 
     var body: some View {
-        HStack(spacing: 12) {
-            Text("Set \(setLog.setNumber)")
-                .font(.body.monospacedDigit())
-                .foregroundStyle(.secondary)
-                .frame(width: 48, alignment: .leading)
+        HStack(spacing: 14) {
+            // State badge — number when pending, icon when done
+            ZStack {
+                Circle()
+                    .fill(badgeColor)
+                    .frame(width: 30, height: 30)
+                if setLog.isCompleted {
+                    Image(systemName: setLog.failed ? "xmark" : "checkmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white)
+                } else {
+                    Text("\(setLog.setNumber)")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(isNextUp ? .white : Color(.label))
+                }
+            }
 
-            // Show actual completed reps (colored) when done, target reps when pending
+            // Rep count
             if setLog.isCompleted {
                 let color: Color = setLog.failed ? .red
                     : setLog.completedReps < setLog.targetReps ? .orange
@@ -33,10 +44,12 @@ struct SetRowView: View {
             } else {
                 Text("× \(setLog.targetReps)")
                     .font(.body)
+                    .foregroundStyle(isNextUp ? .primary : .secondary)
             }
 
             Spacer()
 
+            // Weight — tappable to override
             Button {
                 weightEditText = formattedWeight(displayWeight)
                 showWeightEdit = true
@@ -48,23 +61,18 @@ struct SetRowView: View {
             }
             .buttonStyle(.plain)
 
-            if setLog.isCompleted {
-                // Static indicator — undo is via context menu, reps edit via row tap
-                Image(systemName: setLog.failed ? "xmark.circle.fill" : "checkmark.circle.fill")
-                    .foregroundStyle(setLog.failed ? .red : .green)
-                    .font(.title3)
-                    .padding(.leading, 4)
-            } else {
-                HStack(spacing: 12) {
+            // Action buttons — only on the next pending set
+            if !setLog.isCompleted && isNextUp {
+                HStack(spacing: 20) {
                     Button(action: onFail) {
-                        Image(systemName: "xmark.circle")
-                            .foregroundStyle(.red.opacity(0.7))
-                            .font(.title3)
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.red.opacity(0.8))
+                            .font(.title2)
                     }
                     Button(action: onTap) {
-                        Image(systemName: "checkmark.circle")
-                            .foregroundStyle(isNextUp ? Color.accentColor : Color.secondary)
-                            .font(.title3)
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(Color.accentColor)
+                            .font(.title2)
                     }
                 }
                 .buttonStyle(.plain)
@@ -76,10 +84,9 @@ struct SetRowView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             if setLog.isCompleted {
-                // Tap a completed row to edit the actual rep count
                 repEditText = String(setLog.completedReps)
                 showRepEdit = true
-            } else {
+            } else if isNextUp {
                 onTap()
             }
         }
@@ -95,6 +102,14 @@ struct SetRowView: View {
             }
             .presentationDetents([.height(200)])
         }
+    }
+
+    private var badgeColor: Color {
+        if setLog.isCompleted {
+            if setLog.failed { return .red }
+            return setLog.completedReps < setLog.targetReps ? .orange : .green
+        }
+        return isNextUp ? Color.accentColor : Color(.systemGray4)
     }
 
     private func formattedWeight(_ w: Double) -> String {
@@ -147,21 +162,36 @@ struct WeightEditSheet: View {
     let onSave: (Double?) -> Void
     @Environment(\.dismiss) private var dismiss
 
+    // Wheel picker selection — whole lbs + half-lb toggle
+    @State private var selectedWhole: Int = 45
+    @State private var selectedHalf: Bool = false
+
+    private let wholeRange = Array(stride(from: 0, through: 500, by: 5))
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    TextField("Weight", text: $text)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.center)
-                        .font(.system(size: 52, weight: .bold, design: .monospaced))
-                        .frame(maxWidth: 160)
+                HStack(spacing: 0) {
+                    Picker("Pounds", selection: $selectedWhole) {
+                        ForEach(wholeRange, id: \.self) { v in
+                            Text("\(v)").tag(v)
+                        }
+                    }
+                    .pickerStyle(.wheel)
+                    .frame(maxWidth: .infinity)
+
+                    Picker("Half", selection: $selectedHalf) {
+                        Text(".0").tag(false)
+                        Text(".5").tag(true)
+                    }
+                    .pickerStyle(.wheel)
+                    .frame(width: 80)
+
                     Text("lbs")
-                        .font(.title2)
+                        .font(.body)
                         .foregroundStyle(.secondary)
+                        .padding(.trailing, 16)
                 }
-                .padding(.top, 32)
-                Spacer()
             }
             .navigationTitle("Set Weight")
             .navigationBarTitleDisplayMode(.inline)
@@ -177,10 +207,17 @@ struct WeightEditSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        if let v = Double(text) { onSave(v) }
+                        let value = Double(selectedWhole) + (selectedHalf ? 0.5 : 0.0)
+                        onSave(value)
                         dismiss()
                     }
                 }
+            }
+            .onAppear {
+                let current = Double(text) ?? 45.0
+                let whole = Int(current / 5) * 5
+                selectedWhole = wholeRange.contains(whole) ? whole : 45
+                selectedHalf = current.truncatingRemainder(dividingBy: 1) >= 0.5
             }
         }
     }

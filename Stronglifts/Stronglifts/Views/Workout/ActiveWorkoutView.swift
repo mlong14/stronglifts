@@ -29,6 +29,7 @@ struct ActiveWorkoutView: View {
     @State private var plateCalcRequest: PlateCalcRequest? = nil
     @State private var showAddExercise = false
     @State private var showFinishConfirm = false
+    @State private var repEntryForFailed: SetLog? = nil
 
     // Warmup navigation
     @State private var warmupTarget: WarmupTarget? = nil
@@ -50,10 +51,13 @@ struct ActiveWorkoutView: View {
                         }
 
                         // Exercise sections
+                        let firstIncompleteSet = session.sortedLogs.lazy
+                            .flatMap { $0.sortedSets }
+                            .first { !$0.isCompleted }
                         ForEach(session.sortedLogs) { log in
                             ExerciseSectionView(
                                 log: log,
-                                activeSet: nextSetAfterRest,
+                                activeSet: isResting ? nextSetAfterRest : firstIncompleteSet,
                                 onSetTapped: { set in handleSetTapped(set, proxy: proxy) },
                                 onFailSet: failSet(_:),
                                 onUndoSet: undoSet(_:),
@@ -66,7 +70,8 @@ struct ActiveWorkoutView: View {
                                 onWarmup: WarmupCalculator.isCore(log.exerciseName) ? {
                                     warmupTarget = WarmupTarget(
                                         exerciseName: log.exerciseName,
-                                        workingWeight: log.targetWeight
+                                        workingWeight: log.targetWeight,
+                                        logID: log.persistentModelID
                                     )
                                 } : nil
                             )
@@ -155,8 +160,14 @@ struct ActiveWorkoutView: View {
                 }
             }
             .animation(.easeInOut(duration: 0.3), value: isResting)
+            .sheet(item: $repEntryForFailed) { set in
+                FailedRepsSheet(set: set)
+                    .presentationDetents([.height(220)])
+            }
             .navigationDestination(item: $warmupTarget) { target in
-                ExerciseWarmupView(target: target)
+                if let log = session.exerciseLogs.first(where: { $0.persistentModelID == target.logID }) {
+                    ExerciseWarmupView(target: target, log: log)
+                }
             }
         }
     }
@@ -188,9 +199,9 @@ struct ActiveWorkoutView: View {
         guard !set.isCompleted else { return }
         set.isCompleted = true
         set.failed = true
-        // Prompt user for actual reps — for now, default to 0
         set.completedReps = 0
         try? modelContext.save()
+        repEntryForFailed = set
     }
 
     private func startRest(nextSet: SetLog?, proxy: ScrollViewProxy) {
@@ -302,5 +313,50 @@ struct ActiveWorkoutView: View {
         modelContext.delete(session)
         try? modelContext.save()
         onCancel()
+    }
+}
+
+// MARK: - Failed reps entry sheet
+
+private struct FailedRepsSheet: View {
+    @Bindable var set: SetLog
+    @State private var text = ""
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                Text("How many reps did you complete?")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 20)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    TextField("0", text: $text)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.center)
+                        .font(.system(size: 52, weight: .bold, design: .monospaced))
+                        .frame(maxWidth: 160)
+                    Text("reps")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, 8)
+                Spacer()
+            }
+            .navigationTitle("Failed Set")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        if let v = Int(text) {
+                            set.completedReps = v
+                            try? modelContext.save()
+                        }
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }
