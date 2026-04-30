@@ -94,18 +94,20 @@ final class WorkoutUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 0.5)
         screenshot("09_active_workout_scrolled")
 
-        // Tap Finish
+        // Tap Finish → confirmation dialog
         app.buttons["Finish"].tap()
         Thread.sleep(forTimeInterval: 0.5)
         screenshot("10_finish_dialog")
 
-        // Cancel back
-        app.buttons["Cancel"].tap()
+        // Confirm finish → summary screen
+        app.buttons["Finish & Save"].tap()
+        Thread.sleep(forTimeInterval: 1.5)
+        screenshot("11_workout_summary")
 
-        // Instead cancel the workout
-        app.buttons["Cancel"].tap()
+        // Dismiss summary
+        app.buttons["Done"].tap()
         Thread.sleep(forTimeInterval: 0.5)
-        screenshot("11_home_after_cancel")
+        screenshot("12_home_after_finish")
     }
 
     // MARK: - Helpers

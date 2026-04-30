@@ -7,6 +7,7 @@ struct HomeView: View {
     @Query private var templates: [WorkoutTemplate]
 
     @State private var activeSession: WorkoutSession?
+    @State private var finishedSession: WorkoutSession?
     @State private var stravaError: Error?
     @ObservedObject private var strava = StravaService.shared
 
@@ -14,13 +15,14 @@ struct HomeView: View {
         sessions.sorted { $0.date > $1.date }
     }
 
-    private var nextTemplateName: String {
-        guard let last = sortedSessions.first(where: { $0.isCompleted }) else { return "A" }
-        return last.templateName == "A" ? "B" : "A"
-    }
-
     private var nextTemplate: WorkoutTemplate? {
-        templates.first { $0.name == nextTemplateName }
+        let sorted = templates.sorted { $0.name < $1.name }
+        guard !sorted.isEmpty else { return nil }
+        guard let last = sortedSessions.first(where: { $0.isCompleted }),
+              let idx = sorted.firstIndex(where: { $0.name == last.templateName }) else {
+            return sorted.first
+        }
+        return sorted[(idx + 1) % sorted.count]
     }
 
     private var lastSession: WorkoutSession? {
@@ -40,7 +42,21 @@ struct HomeView: View {
         return result
     }
 
-    /// Adjusted weight accounting for how long it's been since the exercise was last done.
+    /// Most recent RPE feedback recorded for each exercise name.
+    private var lastRPEByExercise: [String: RPEFeedback] {
+        var result: [String: (date: Date, rpe: RPEFeedback)] = [:]
+        for session in sessions where session.isCompleted {
+            for log in session.exerciseLogs {
+                guard let rpe = log.rpeFeedback else { continue }
+                if result[log.exerciseName].map({ session.date > $0.date }) ?? true {
+                    result[log.exerciseName] = (session.date, rpe)
+                }
+            }
+        }
+        return result.mapValues(\.rpe)
+    }
+
+    /// Adjusted weight accounting for days since last session and how that session felt.
     private func adjustedWeight(for exercise: ExerciseTemplate) -> Double {
         guard let lastDate = lastSessionDateByExercise[exercise.name] else {
             return exercise.currentWeight
@@ -50,6 +66,7 @@ struct HomeView: View {
             currentWeight: exercise.currentWeight,
             increment: exercise.increment,
             daysSinceLastWorkout: days,
+            lastRPE: lastRPEByExercise[exercise.name],
             isBarbell: WarmupCalculator.isCore(exercise.name)
         )
     }
@@ -152,6 +169,11 @@ struct HomeView: View {
                     onCancel: { activeSession = nil }
                 )
             }
+            .fullScreenCover(item: $finishedSession) { session in
+                WorkoutSummaryView(session: session) {
+                    finishedSession = nil
+                }
+            }
             .alert("Strava Error", isPresented: .constant(stravaError != nil), presenting: stravaError) { _ in
                 Button("OK") { stravaError = nil }
             } message: { error in
@@ -206,6 +228,9 @@ struct HomeView: View {
 
         try? modelContext.save()
         activeSession = nil
+        finishedSession = session
+
+        Task { await HealthKitService.shared.saveWorkout(session) }
 
         if strava.isConnected {
             Task {

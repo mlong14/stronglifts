@@ -504,6 +504,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CODE_SIGN_ENTITLEMENTS = Stronglifts/Stronglifts.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5BH5FNNBA3;
@@ -513,6 +514,9 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Stronglifts/Info.plist;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Stronglifts connects to your Whoop heart rate monitor via Bluetooth to record heart rate during workouts.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Stronglifts reads health data for context.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Stronglifts saves completed workouts, active energy, and heart rate to Apple Health.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -550,6 +554,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CODE_SIGN_ENTITLEMENTS = Stronglifts/Stronglifts.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5BH5FNNBA3;
@@ -559,6 +564,9 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Stronglifts/Info.plist;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Stronglifts connects to your Whoop heart rate monitor via Bluetooth to record heart rate during workouts.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Stronglifts reads health data for context.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Stronglifts saves completed workouts, active energy, and heart rate to Apple Health.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;

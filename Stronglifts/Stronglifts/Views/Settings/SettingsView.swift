@@ -76,37 +76,16 @@ struct SettingsView: View {
                 }
 
                 ForEach(templates.sorted(by: { $0.name < $1.name })) { template in
-                    Section("Workout \(template.name)") {
-                        ForEach(template.sortedExercises) { exercise in
-                            NavigationLink {
-                                ExerciseEditView(exercise: exercise)
-                            } label: {
-                                HStack {
-                                    Text(exercise.name)
-                                    Spacer()
-                                    Text("\(exercise.sets)×\(exercise.reps) · \(formattedWeight(exercise.currentWeight)) lbs")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                        .onMove { from, to in
-                            var sorted = template.sortedExercises
-                            sorted.move(fromOffsets: from, toOffset: to)
-                            for (i, ex) in sorted.enumerated() { ex.order = i }
-                            try? modelContext.save()
-                        }
-                        .onDelete { offsets in
-                            let sorted = template.sortedExercises
-                            for i in offsets { modelContext.delete(sorted[i]) }
-                            try? modelContext.save()
-                        }
+                    WorkoutTemplateSectionView(
+                        template: template,
+                        canDelete: templates.count > 1,
+                        onDelete: { deleteTemplate(template) }
+                    )
+                }
 
-                        Button {
-                            addExercise(to: template)
-                        } label: {
-                            Label("Add Exercise", systemImage: "plus.circle")
-                        }
+                Section {
+                    Button { addTemplate() } label: {
+                        Label("Add Workout", systemImage: "plus.circle")
                     }
                 }
             }
@@ -157,19 +136,103 @@ struct SettingsView: View {
         }
     }
 
-    private func addExercise(to template: WorkoutTemplate) {
+    private func addTemplate() {
+        let existing = Set(templates.map(\.name))
+        let candidates = ["A","B","C","D","E","F","G"]
+        let name = candidates.first { !existing.contains($0) } ?? "New"
+        let t = WorkoutTemplate(name: name)
+        t.exercises = [ExerciseTemplate(name: "Squat", sets: 3, reps: 5, increment: 10, order: 0)]
+        modelContext.insert(t)
+        try? modelContext.save()
+    }
+
+    private func deleteTemplate(_ template: WorkoutTemplate) {
+        modelContext.delete(template)
+        try? modelContext.save()
+    }
+
+    private func formattedWeight(_ w: Double) -> String {
+        w.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(w)) : String(w)
+    }
+}
+
+// MARK: - Per-template section
+
+private struct WorkoutTemplateSectionView: View {
+    @Bindable var template: WorkoutTemplate
+    let canDelete: Bool
+    let onDelete: () -> Void
+
+    @Environment(\.modelContext) private var modelContext
+    @State private var showDeleteConfirm = false
+
+    var body: some View {
+        Section {
+            HStack {
+                Circle()
+                    .fill(template.color)
+                    .frame(width: 10, height: 10)
+                TextField("Name", text: $template.name)
+                    .onChange(of: template.name) { _, _ in try? modelContext.save() }
+            }
+
+            ForEach(template.sortedExercises) { exercise in
+                NavigationLink { ExerciseEditView(exercise: exercise) } label: {
+                    HStack {
+                        Text(exercise.name)
+                        Spacer()
+                        Text("\(exercise.sets)×\(exercise.reps) · \(fmt(exercise.currentWeight)) lbs")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .onMove { from, to in
+                var sorted = template.sortedExercises
+                sorted.move(fromOffsets: from, toOffset: to)
+                for (i, ex) in sorted.enumerated() { ex.order = i }
+                try? modelContext.save()
+            }
+            .onDelete { offsets in
+                let sorted = template.sortedExercises
+                for i in offsets { modelContext.delete(sorted[i]) }
+                try? modelContext.save()
+            }
+
+            Button { addExercise() } label: {
+                Label("Add Exercise", systemImage: "plus.circle")
+            }
+
+            if canDelete {
+                Button(role: .destructive) { showDeleteConfirm = true } label: {
+                    Label("Delete Workout \(template.name)", systemImage: "trash")
+                }
+            }
+        } header: {
+            Text("Workout \(template.name)")
+        }
+        .confirmationDialog(
+            "Delete Workout \(template.name)?",
+            isPresented: $showDeleteConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) { onDelete() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes the template and its exercises. Your workout history is kept.")
+        }
+    }
+
+    private func addExercise() {
         let ex = ExerciseTemplate(
             name: "New Exercise",
-            sets: 3,
-            reps: 5,
-            increment: 5,
+            sets: 3, reps: 5, increment: 5,
             order: template.exercises.count
         )
         template.exercises.append(ex)
         try? modelContext.save()
     }
 
-    private func formattedWeight(_ w: Double) -> String {
+    private func fmt(_ w: Double) -> String {
         w.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(w)) : String(w)
     }
 }

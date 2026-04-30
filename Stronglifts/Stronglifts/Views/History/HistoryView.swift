@@ -169,10 +169,9 @@ struct CalendarDayCell: View {
 
     private var calendar: Calendar { .current }
 
-    // A = blue accent, B = orange
     private var templateColor: Color {
         guard let name = session?.templateName else { return .accentColor }
-        return name == "A" ? Color.accentColor : Color.orange
+        return WorkoutTemplate.color(for: name)
     }
 
     var body: some View {
@@ -211,6 +210,7 @@ struct SessionDetailView: View {
     let onDelete: () -> Void
 
     @State private var showDeleteConfirm = false
+    @State private var copied = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -235,11 +235,21 @@ struct SessionDetailView: View {
                     .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button(role: .destructive) {
-                    showDeleteConfirm = true
-                } label: {
-                    Image(systemName: "trash")
-                        .foregroundStyle(.red)
+                HStack(spacing: 16) {
+                    Button {
+                        UIPasteboard.general.string = session.clipboardText()
+                        copied = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) { copied = false }
+                    } label: {
+                        Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                            .foregroundStyle(copied ? .green : .accentColor)
+                    }
+                    Button(role: .destructive) {
+                        showDeleteConfirm = true
+                    } label: {
+                        Image(systemName: "trash")
+                            .foregroundStyle(.red)
+                    }
                 }
             }
             .padding(.horizontal)

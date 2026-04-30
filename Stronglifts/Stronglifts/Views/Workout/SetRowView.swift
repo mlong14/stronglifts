@@ -9,11 +9,12 @@ struct SetRowView: View {
     let onUndo: () -> Void
 
     @State private var showWeightEdit = false
-    @State private var weightEditText = ""
     @State private var showRepEdit = false
     @State private var repEditText = ""
 
     private var displayWeight: Double { setLog.weight ?? exerciseWeight }
+    // True override = user explicitly set a different weight than the exercise weight
+    private var hasOverride: Bool { setLog.weight != nil && setLog.weight != exerciseWeight }
 
     var body: some View {
         HStack(spacing: 14) {
@@ -38,9 +39,15 @@ struct SetRowView: View {
                 let color: Color = setLog.failed ? .red
                     : setLog.completedReps < setLog.targetReps ? .orange
                     : .green
-                Text("× \(setLog.completedReps)")
-                    .font(.body)
-                    .foregroundStyle(color)
+                Button {
+                    repEditText = String(setLog.completedReps)
+                    showRepEdit = true
+                } label: {
+                    Text("× \(setLog.completedReps)")
+                        .font(.body)
+                        .foregroundStyle(color)
+                }
+                .buttonStyle(.plain)
             } else {
                 Text("× \(setLog.targetReps)")
                     .font(.body)
@@ -51,15 +58,24 @@ struct SetRowView: View {
 
             // Weight — tappable to override
             Button {
-                weightEditText = formattedWeight(displayWeight)
                 showWeightEdit = true
             } label: {
                 Text("\(formattedWeight(displayWeight)) lbs")
                     .font(.body.monospacedDigit())
-                    .foregroundStyle(setLog.weight != nil ? .primary : .secondary)
-                    .underline(setLog.weight != nil)
+                    .foregroundStyle(hasOverride ? .primary : .secondary)
+                    .underline(hasOverride)
             }
             .buttonStyle(.plain)
+
+            // Completed set: undo button
+            if setLog.isCompleted {
+                Button(action: onUndo) {
+                    Image(systemName: "arrow.uturn.backward.circle")
+                        .foregroundStyle(.secondary)
+                        .font(.title3)
+                }
+                .buttonStyle(.plain)
+            }
 
             // Action buttons — only on the next pending set
             if !setLog.isCompleted && isNextUp {
@@ -82,19 +98,15 @@ struct SetRowView: View {
         .padding(.vertical, 12)
         .background(isNextUp && !setLog.isCompleted ? Color.accentColor.opacity(0.1) : Color.clear)
         .contentShape(Rectangle())
-        .onTapGesture {
-            if setLog.isCompleted {
-                repEditText = String(setLog.completedReps)
-                showRepEdit = true
-            } else if isNextUp {
-                onTap()
-            }
-        }
         .sheet(isPresented: $showWeightEdit) {
-            WeightEditSheet(text: $weightEditText, hasOverride: setLog.weight != nil) { newWeight in
+            WeightEditSheet(
+                currentWeight: displayWeight,
+                exerciseWeight: exerciseWeight,
+                hasOverride: hasOverride
+            ) { newWeight in
                 setLog.weight = newWeight
             }
-            .presentationDetents([.height(200)])
+            .presentationDetents([.height(220)])
         }
         .sheet(isPresented: $showRepEdit) {
             RepEditSheet(text: $repEditText) { newReps in
@@ -124,74 +136,69 @@ struct RepEditSheet: View {
     let onSave: (Int) -> Void
     @Environment(\.dismiss) private var dismiss
 
+    @State private var selectedReps: Int = 5
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    TextField("Reps", text: $text)
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.center)
-                        .font(.system(size: 52, weight: .bold, design: .monospaced))
-                        .frame(maxWidth: 160)
-                    Text("reps")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
+            HStack(spacing: 0) {
+                Picker("Reps", selection: $selectedReps) {
+                    ForEach(0...30, id: \.self) { n in
+                        Text("\(n)").tag(n)
+                    }
                 }
-                .padding(.top, 32)
-                Spacer()
+                .pickerStyle(.wheel)
+                .frame(maxWidth: .infinity)
+
+                Text("reps")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .padding(.trailing, 20)
             }
             .navigationTitle("Edit Reps")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        if let v = Int(text) { onSave(v) }
+                        onSave(selectedReps)
                         dismiss()
                     }
                 }
+            }
+            .onAppear {
+                selectedReps = Int(text) ?? 5
             }
         }
     }
 }
 
-// MARK: - Weight edit sheet
+// MARK: - Weight edit sheet (single wheel, 5 lb steps)
 
 struct WeightEditSheet: View {
-    @Binding var text: String
+    let currentWeight: Double
+    let exerciseWeight: Double
     let hasOverride: Bool
     let onSave: (Double?) -> Void
     @Environment(\.dismiss) private var dismiss
 
-    // Wheel picker selection — whole lbs + half-lb toggle
-    @State private var selectedWhole: Int = 45
-    @State private var selectedHalf: Bool = false
+    @State private var selectedWeight: Double = 45
 
-    private let wholeRange = Array(stride(from: 0, through: 500, by: 5))
+    private let weightOptions = Array(stride(from: 0.0, through: 500.0, by: 5.0))
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                HStack(spacing: 0) {
-                    Picker("Pounds", selection: $selectedWhole) {
-                        ForEach(wholeRange, id: \.self) { v in
-                            Text("\(v)").tag(v)
-                        }
+            HStack(spacing: 0) {
+                Picker("Weight", selection: $selectedWeight) {
+                    ForEach(weightOptions, id: \.self) { v in
+                        Text(v == 0 ? "0" : "\(Int(v))").tag(v)
                     }
-                    .pickerStyle(.wheel)
-                    .frame(maxWidth: .infinity)
-
-                    Picker("Half", selection: $selectedHalf) {
-                        Text(".0").tag(false)
-                        Text(".5").tag(true)
-                    }
-                    .pickerStyle(.wheel)
-                    .frame(width: 80)
-
-                    Text("lbs")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                        .padding(.trailing, 16)
                 }
+                .pickerStyle(.wheel)
+                .frame(maxWidth: .infinity)
+
+                Text("lbs")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .padding(.trailing, 20)
             }
             .navigationTitle("Set Weight")
             .navigationBarTitleDisplayMode(.inline)
@@ -207,17 +214,21 @@ struct WeightEditSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        let value = Double(selectedWhole) + (selectedHalf ? 0.5 : 0.0)
-                        onSave(value)
+                        // Pass nil (clear override) only when value matches exercise default.
+                        // exerciseWeight < 0 means "no default" — always save the value.
+                        if exerciseWeight >= 0 && selectedWeight == exerciseWeight {
+                            onSave(nil)
+                        } else {
+                            onSave(selectedWeight)
+                        }
                         dismiss()
                     }
                 }
             }
             .onAppear {
-                let current = Double(text) ?? 45.0
-                let whole = Int(current / 5) * 5
-                selectedWhole = wholeRange.contains(whole) ? whole : 45
-                selectedHalf = current.truncatingRemainder(dividingBy: 1) >= 0.5
+                // Snap to nearest 5 lb step
+                let snapped = (currentWeight / 5).rounded() * 5
+                selectedWeight = weightOptions.contains(snapped) ? snapped : exerciseWeight
             }
         }
     }

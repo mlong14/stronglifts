@@ -1,9 +1,12 @@
 import Foundation
 
 /// Calculates plate combinations for a given barbell weight.
-/// Fixed plate inventory: 2×45, 2×35, 2×25, 2×10, 2×5, 2×2.5 (1 of each per side).
+/// Plate inventory per side: 1×45, 1×35, 1×25, 1×10, 2×5, 1×2.5
 enum PlateCalculator {
-    static let availablePlates: [Double] = [45, 35, 25, 10, 5, 2.5]
+    // (weight, maxPerSide)
+    static let inventory: [(weight: Double, maxPerSide: Int)] = [
+        (45, 1), (35, 1), (25, 1), (10, 1), (5, 2), (2.5, 1)
+    ]
     static let barOptions: [Double] = [45, 35, 25]
 
     struct PlateCombo {
@@ -19,12 +22,12 @@ enum PlateCalculator {
         var remaining = (totalWeight - barWeight) / 2
         var plates: [(Double, Int)] = []
 
-        for plate in availablePlates {
+        for (plate, maxCount) in inventory {
             guard remaining > 0 else { break }
-            // Max 1 of each plate per side (we own 2 total = 1 per side)
-            if remaining >= plate {
-                plates.append((plate, 1))
-                remaining -= plate
+            let count = min(maxCount, Int(remaining / plate))
+            if count > 0 {
+                plates.append((plate, count))
+                remaining -= plate * Double(count)
             }
         }
 

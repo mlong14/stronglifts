@@ -3,14 +3,14 @@ import SwiftData
 
 struct AddExerciseSheet: View {
     @Environment(\.dismiss) private var dismiss
-    // Most-recent sessions first so the first occurrence of each exercise name is the latest.
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     let onAdd: (String, Int, Int, Double) -> Void
 
     @State private var name = ""
-    @State private var sets = "3"
-    @State private var reps = "5"
-    @State private var weight = ""
+    @State private var selectedSets = 3
+    @State private var selectedReps = 5
+    @State private var selectedWeight = 45.0
+    @State private var showWeightPicker = false
 
     private struct ExerciseSummary: Identifiable {
         let id = UUID()
@@ -20,7 +20,6 @@ struct AddExerciseSheet: View {
         let weight: Double
     }
 
-    /// One entry per unique exercise name, using the most recent session's stats.
     private var recentExercises: [ExerciseSummary] {
         var seen = Set<String>()
         var result: [ExerciseSummary] = []
@@ -40,9 +39,7 @@ struct AddExerciseSheet: View {
     }
 
     var isValid: Bool {
-        !name.trimmingCharacters(in: .whitespaces).isEmpty &&
-        Int(sets) != nil && Int(reps) != nil &&
-        Double(weight) != nil
+        !name.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
     var body: some View {
@@ -52,10 +49,12 @@ struct AddExerciseSheet: View {
                     Section("Recent") {
                         ForEach(recentExercises) { exercise in
                             Button {
-                                name   = exercise.name
-                                sets   = String(exercise.sets)
-                                reps   = String(exercise.reps)
-                                weight = formattedWeight(exercise.weight)
+                                name = exercise.name
+                                selectedSets = exercise.sets
+                                selectedReps = exercise.reps
+                                let snapped = (exercise.weight / 5).rounded() * 5
+                                let options = Array(stride(from: 0.0, through: 500.0, by: 5.0))
+                                selectedWeight = options.contains(snapped) ? snapped : 45.0
                             } label: {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 2) {
@@ -85,27 +84,32 @@ struct AddExerciseSheet: View {
                     HStack {
                         Text("Sets")
                         Spacer()
-                        TextField("3", text: $sets)
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 60)
+                        Picker("Sets", selection: $selectedSets) {
+                            ForEach(1...10, id: \.self) { Text("\($0)").tag($0) }
+                        }
+                        .pickerStyle(.menu)
                     }
                     HStack {
                         Text("Reps")
                         Spacer()
-                        TextField("5", text: $reps)
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 60)
+                        Picker("Reps", selection: $selectedReps) {
+                            ForEach(1...20, id: \.self) { Text("\($0)").tag($0) }
+                        }
+                        .pickerStyle(.menu)
                     }
                 }
 
                 Section("Weight") {
                     HStack {
-                        TextField("0", text: $weight)
-                            .keyboardType(.decimalPad)
-                        Text("lbs")
-                            .foregroundStyle(.secondary)
+                        Text("Starting weight")
+                        Spacer()
+                        Button {
+                            showWeightPicker = true
+                        } label: {
+                            Text("\(formattedWeight(selectedWeight)) lbs")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -119,14 +123,24 @@ struct AddExerciseSheet: View {
                     Button("Add") {
                         onAdd(
                             name.trimmingCharacters(in: .whitespaces),
-                            Int(sets) ?? 3,
-                            Int(reps) ?? 5,
-                            Double(weight) ?? 0
+                            selectedSets,
+                            selectedReps,
+                            selectedWeight
                         )
                         dismiss()
                     }
                     .disabled(!isValid)
                 }
+            }
+            .sheet(isPresented: $showWeightPicker) {
+                WeightEditSheet(
+                    currentWeight: selectedWeight,
+                    exerciseWeight: -1,  // no "exercise default" concept here
+                    hasOverride: false
+                ) { newWeight in
+                    if let w = newWeight { selectedWeight = w }
+                }
+                .presentationDetents([.height(220)])
             }
         }
     }

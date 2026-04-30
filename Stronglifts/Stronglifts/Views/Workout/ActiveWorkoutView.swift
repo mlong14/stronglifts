@@ -30,6 +30,7 @@ struct ActiveWorkoutView: View {
     @State private var showAddExercise = false
     @State private var showFinishConfirm = false
     @State private var repEntryForFailed: SetLog? = nil
+    @State private var rpeTargetLog: ExerciseLog? = nil
 
     // Warmup navigation
     @State private var warmupTarget: WarmupTarget? = nil
@@ -50,16 +51,16 @@ struct ActiveWorkoutView: View {
                             .transition(.move(edge: .top).combined(with: .opacity))
                         }
 
-                        // Exercise sections
-                        let firstIncompleteSet = session.sortedLogs.lazy
-                            .flatMap { $0.sortedSets }
-                            .first { !$0.isCompleted }
+                        // Exercise sections — during rest all sets are locked; after skip each
+                        // exercise's first incomplete set becomes independently actionable
                         ForEach(session.sortedLogs) { log in
+                            let firstIncompleteOfLog = log.sortedSets.first { !$0.isCompleted }
+                            let activeSet: SetLog? = isResting ? nil : firstIncompleteOfLog
                             ExerciseSectionView(
                                 log: log,
-                                activeSet: isResting ? nextSetAfterRest : firstIncompleteSet,
+                                activeSet: activeSet,
                                 onSetTapped: { set in handleSetTapped(set, proxy: proxy) },
-                                onFailSet: failSet(_:),
+                                onFailSet: { set in failSet(set, proxy: proxy) },
                                 onUndoSet: undoSet(_:),
                                 onDeleteSet: deleteSet(_:),
                                 onAddSet: { addSet(to: log) },
@@ -164,6 +165,13 @@ struct ActiveWorkoutView: View {
                 FailedRepsSheet(set: set)
                     .presentationDetents([.height(220)])
             }
+            .sheet(item: $rpeTargetLog) { log in
+                RPESheet(exerciseName: log.exerciseName) { rpe in
+                    log.rpeFeedback = rpe
+                    try? modelContext.save()
+                }
+                .presentationDetents([.height(260)])
+            }
             .navigationDestination(item: $warmupTarget) { target in
                 if let log = session.exerciseLogs.first(where: { $0.persistentModelID == target.logID }) {
                     ExerciseWarmupView(target: target, log: log)
@@ -181,11 +189,22 @@ struct ActiveWorkoutView: View {
         set.completedReps = set.targetReps
         try? modelContext.save()
 
-        // Find the next incomplete set across all exercises
+        checkForRPEPrompt(after: set)
+
         let allSets = session.sortedLogs.flatMap { $0.sortedSets }
         let nextSet = allSets.first { !$0.isCompleted }
-
         startRest(nextSet: nextSet, proxy: proxy)
+    }
+
+    // Show RPE sheet after the last working set of a core exercise is successfully completed.
+    private func checkForRPEPrompt(after completedSet: SetLog) {
+        guard let log = session.sortedLogs.first(where: { $0.setLogs.contains { $0.id == completedSet.id } }),
+              WarmupCalculator.isCore(log.exerciseName),
+              log.rpeFeedback == nil,
+              log.wasSuccessful else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            rpeTargetLog = log
+        }
     }
 
     private func undoSet(_ set: SetLog) {
@@ -193,18 +212,32 @@ struct ActiveWorkoutView: View {
         set.failed = false
         set.completedReps = 0
         try? modelContext.save()
+        // Cancel rest timer so the undone set becomes actionable immediately
+        timerCancellable?.cancel()
+        timerCancellable = nil
+        isResting = false
+        nextSetAfterRest = nil
+        restEndDate = nil
     }
 
-    private func failSet(_ set: SetLog) {
+    private func failSet(_ set: SetLog, proxy: ScrollViewProxy) {
         guard !set.isCompleted else { return }
         set.isCompleted = true
         set.failed = true
         set.completedReps = 0
         try? modelContext.save()
         repEntryForFailed = set
+
+        let allSets = session.sortedLogs.flatMap { $0.sortedSets }
+        let nextSet = allSets.first { !$0.isCompleted }
+        startRest(nextSet: nextSet, proxy: proxy)
     }
 
     private func startRest(nextSet: SetLog?, proxy: ScrollViewProxy) {
+        // Cancel any in-flight timer before starting a new one
+        timerCancellable?.cancel()
+        timerCancellable = nil
+
         nextSetAfterRest = nextSet
         let endDate = Date().addingTimeInterval(Double(Self.defaultRestSeconds))
         restEndDate = endDate
@@ -316,43 +349,85 @@ struct ActiveWorkoutView: View {
     }
 }
 
+// MARK: - RPE feedback sheet
+
+private struct RPESheet: View {
+    let exerciseName: String
+    let onSelect: (RPEFeedback) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("How did \(exerciseName) feel?")
+                .font(.headline)
+                .padding(.top, 20)
+
+            VStack(spacing: 10) {
+                rpeButton(.easy,  label: "Light",  detail: "Could do more",        color: .green)
+                rpeButton(.good,  label: "Right",  detail: "Challenging but clean", color: .blue)
+                rpeButton(.hard,  label: "Heavy",  detail: "Barely made it",        color: .orange)
+            }
+            .padding(.horizontal)
+
+            Button("Skip") { dismiss() }
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .padding(.bottom, 8)
+        }
+    }
+
+    private func rpeButton(_ rpe: RPEFeedback, label: String, detail: String, color: Color) -> some View {
+        Button {
+            onSelect(rpe)
+            dismiss()
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(label).font(.headline).foregroundStyle(.primary)
+                    Text(detail).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(color.opacity(0.15))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 // MARK: - Failed reps entry sheet
 
 private struct FailedRepsSheet: View {
     @Bindable var set: SetLog
-    @State private var text = ""
+    @State private var selectedReps = 0
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                Text("How many reps did you complete?")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 20)
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    TextField("0", text: $text)
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.center)
-                        .font(.system(size: 52, weight: .bold, design: .monospaced))
-                        .frame(maxWidth: 160)
-                    Text("reps")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
+            HStack(spacing: 0) {
+                Picker("Reps completed", selection: $selectedReps) {
+                    ForEach(0...30, id: \.self) { n in
+                        Text("\(n)").tag(n)
+                    }
                 }
-                .padding(.top, 8)
-                Spacer()
+                .pickerStyle(.wheel)
+                .frame(maxWidth: .infinity)
+
+                Text("reps")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .padding(.trailing, 20)
             }
-            .navigationTitle("Failed Set")
+            .navigationTitle("How many reps?")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        if let v = Int(text) {
-                            set.completedReps = v
-                            try? modelContext.save()
-                        }
+                        set.completedReps = selectedReps
+                        try? modelContext.save()
                         dismiss()
                     }
                 }

@@ -54,26 +54,20 @@ struct RootView: View {
         if count == 0 {
             seedDefaultProgram()
         }
+        Task { await HealthKitService.shared.requestAuthorization() }
         isReady = true
     }
 
     private func seedDefaultProgram() {
-        let workoutA = WorkoutTemplate(name: "A")
-        workoutA.exercises = [
-            ExerciseTemplate(name: "Squat",       sets: 2, reps: 5, increment: 10, order: 0),
-            ExerciseTemplate(name: "Bench Press", sets: 2, reps: 5, increment: 5,  order: 1),
-            ExerciseTemplate(name: "Barbell Row", sets: 2, reps: 5, increment: 5,  order: 2),
+        let workout = WorkoutTemplate(name: "F")
+        workout.exercises = [
+            ExerciseTemplate(name: "Squat",          sets: 3, reps: 5, increment: 10, order: 0),
+            ExerciseTemplate(name: "Bench Press",    sets: 3, reps: 5, increment: 5,  order: 1),
+            ExerciseTemplate(name: "Barbell Row",    sets: 3, reps: 5, increment: 5,  order: 2),
+            ExerciseTemplate(name: "Overhead Press", sets: 2, reps: 5, increment: 5,  order: 3),
+            ExerciseTemplate(name: "Deadlift",       sets: 1, reps: 5, increment: 10, order: 4),
         ]
-
-        let workoutB = WorkoutTemplate(name: "B")
-        workoutB.exercises = [
-            ExerciseTemplate(name: "Squat",          sets: 2, reps: 5, increment: 10, order: 0),
-            ExerciseTemplate(name: "Overhead Press", sets: 2, reps: 5, increment: 5,  order: 1),
-            ExerciseTemplate(name: "Deadlift",       sets: 2, reps: 5, increment: 10, order: 2),
-        ]
-
-        modelContext.insert(workoutA)
-        modelContext.insert(workoutB)
+        modelContext.insert(workout)
         try? modelContext.save()
     }
 }

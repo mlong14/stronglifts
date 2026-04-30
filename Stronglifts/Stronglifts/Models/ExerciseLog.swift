@@ -1,12 +1,19 @@
 import SwiftData
 import Foundation
 
+enum RPEFeedback: String, Codable, CaseIterable {
+    case easy   // could do more — next session add an extra increment
+    case good   // challenging but clean — normal progression
+    case hard   // barely made it — hold weight next session
+}
+
 @Model
 final class ExerciseLog {
     var exerciseName: String
     var targetWeight: Double
     var order: Int
     var warmupCompletedCount: Int = 0
+    var rpeFeedback: RPEFeedback? = nil
     var session: WorkoutSession?
     @Relationship(deleteRule: .cascade)
     var setLogs: [SetLog] = []
